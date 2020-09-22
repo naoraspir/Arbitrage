@@ -1,0 +1,35 @@
+Metadata-Version: 2.1
+Name: gekko
+Version: 0.2.8
+Summary: Machine learning and optimization for dynamic systems
+Home-page: https://github.com/BYU-PRISM/GEKKO
+Author: BYU PRISM Lab
+Author-email: john_hedengren@byu.edu
+License: MIT
+Keywords: differential deep learning reinforcement optimization mixed-integer
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Requires-Python: >=2.6
+Requires-Dist: flask
+Requires-Dist: flask-cors
+Requires-Dist: numpy (>=1.8)
+
+GEKKO
+=====
+
+GEKKO is a python package for machine learning and optimization, specializing in
+dynamic optimization of differential algebraic equations (DAE) systems. GEKKO 
+provides a user-friendly interface to the powerful APMonitor optimization suite
+on the back end. It is coupled with large-scale solvers for linear, quadratic,
+nonlinear, and mixed integer programming (LP, QP, NLP, MILP, MINLP). Capabilities
+include machine learning, discrete or continuous models, real-time optimization, 
+simulation, moving horizon estimation, and nonlinear predictive control.
+
