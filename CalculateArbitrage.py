@@ -51,7 +51,7 @@ def PureCalc(betfair, trading, matchbook, headers, c_betfair, c_matchbook):
         runner_id = long(matchbook.iloc[i]['Runner Id'])
         url_offer_matchbook = 'https://api.matchbook.com/edge/rest/v2/offers'
         # Restricting the amount lost to r dollars!
-        r = 100
+        r = 800
 
         # lay in betfair and back in matchbook
         if b > a and x_max >= 1 and y_max >= 1:
@@ -95,6 +95,17 @@ def PureCalc(betfair, trading, matchbook, headers, c_betfair, c_matchbook):
                 x = round(x.value[0], 2)  # amount to lay in betfair
                 y = round(y.value[0], 2)  # amount to back in MatchBook
                 # TODO get: trading for BETFAIR and headers for MATCHBOOK, MARKET ID , SELECTION ID , LAY OR BACK
+                print("trying to place bets, found arbitrage!!")
+                limit_order = filters.limit_order(
+                    size=double(x), price=double(a),  # persistence_type="LAPSE",
+                    time_in_force="FILL_OR_KILL", min_fill_size=double(x)
+                )
+                instruction = filters.place_instruction(
+                    order_type="LIMIT",
+                    selection_id=selection_id,
+                    side="LAY",
+                    limit_order=limit_order,
+                )
                 # try order in matchbook
                 querystring = {"odds-type": "DECIMAL",
                                "exchange-type": "back-lay",
@@ -110,71 +121,53 @@ def PureCalc(betfair, trading, matchbook, headers, c_betfair, c_matchbook):
 
                 response = requests.request("POST", url_offer_matchbook, data=json.dumps(querystring), headers=headers)
                 order_report_MB = response.json()['offers'][0]
-
-                offer_id = order_report_MB['id']
-
-                if (order_report_MB['status'] == "matched"):
+                print("MB oreder status: " + order_report_MB['status'])
+                if order_report_MB['status'] == "matched":
                     # try order in betfair
-                    limit_order = filters.limit_order(
-                        size=double(x), price=double(a),  # persistence_type="LAPSE",
-                        time_in_force="FILL_OR_KILL", min_fill_size=double(x)
-                    )
-                    instruction = filters.place_instruction(
-                        order_type="LIMIT",
-                        selection_id=selection_id,
-                        side="LAY",
-                        limit_order=limit_order,
-                    )
+
                     order_report_BF = trading.betting.place_orders(
                         market_id=market_id, instructions=[instruction]  # list
                     )
+                    if order_report_BF.place_instruction_reports[0].order_status == 'EXECUTION_COMPLETE':
+                        print(order_report_MB)
+                        print(order_report_BF)
 
-                    print(order_report_MB)
-                    print(order_report_BF.place_instruction_reports[0].order_status)
+                        rev_if_betfair = (x * (1 - c_betfair))
+                        loss_if_betfair = y
+                        prof_net_if_betfair_wins = rev_if_betfair - loss_if_betfair
 
-                    # if order_report_BF.status == 'SUCCESS' and order_report_MB['status'] == "matched":
-                    #     if order_report_BF.place_instruction_reports[0].order_status == 'EXECUTION_COMPLETE':
-                    #         for order in order_report_BF.place_instruction_reports:
-                    #             print(
-                    #                 "in BetFair : Status: {0}, BetId: {1}, Average Price Matched: {2}\n".format(
-                    #                     order.status,
-                    #                     order.bet_id,
-                    #                     order.average_price_matched
-                    #                 )
-                    #             )
-                    #         print(order_report_MB['matched-bets'][0])
-                    # else:
-                    #     print('status of failed in betfair?: ' + order_report_BF.place_instruction_reports[
-                    #         0].error_code + '\n')
-                    #     print('status of failed in matchbook?: ' + order_report_MB['status'])
+                        # if back wins in matchbook
+                        rev_if_matchbook = ((y * b) - y) * (1 - c_matchbook)
+                        loss_if_matchbook = (a * x) - x
+                        prof_net_if_matchbook_wins = rev_if_matchbook - loss_if_matchbook
 
-                    # if lay in betfair wins:
-                    rev_if_betfair = (x * (1 - c_betfair))
-                    loss_if_betfair = y
-                    prof_net_if_betfair_wins = rev_if_betfair - loss_if_betfair
-
-                    # if back wins in matchbook
-                    rev_if_matchbook = ((y * b) - y) * (1 - c_matchbook)
-                    loss_if_matchbook = (a * x) - x
-                    prof_net_if_matchbook_wins = rev_if_matchbook - loss_if_matchbook
-
-                    # lay in betfair and back in matchbook
-                    stuff += "\ncompered '" + betfair.iloc[i]['Event Name'] + "' in betfair to '" + matchbook.iloc[i][
-                        'Event Name'] + "' in matchbook\n"
-                    mb_win_col = [betfair.iloc[i]['Event Name'], betfair.iloc[i]['Date'], bet_on, a, x_max, b, y_max,
-                                  str(y) + ' in MatchBook',
-                                  str(x) + ' in Betfair', 'if matchbook wins: ' + str(prof_net_if_matchbook_wins)]
-                    bf_wins_col = [betfair.iloc[i]['Event Name'], betfair.iloc[i]['Date'], bet_on, a, x_max, b, y_max,
-                                   str(y) + ' in MatchBook',
-                                   str(x) + ' in Betfair', 'if betfair wins: ' + str(prof_net_if_betfair_wins)]
-                    to_append = pd.DataFrame([mb_win_col, bf_wins_col],
-                                             columns=['Event Name', 'Date', 'Bet On', 'Best Lay Price', 'Max Lay Size',
-                                                      'Best Back Price',
-                                                      'Max Back Size', 'should back:', 'should lay:', 'net prof:'])
-                    final_df_to_invest = pd.concat([to_append, final_df_to_invest])
-                    print("FOUND!!!! lay in betfair back in matchbook")
+                        # lay in betfair and back in matchbook
+                        stuff += "\ncompered '" + betfair.iloc[i]['Event Name'] + "' in betfair to '" + \
+                                 matchbook.iloc[i][
+                                     'Event Name'] + "' in matchbook\n"
+                        mb_win_col = [betfair.iloc[i]['Event Name'], betfair.iloc[i]['Date'], bet_on, a, x_max, b,
+                                      y_max,
+                                      str(y) + ' in MatchBook',
+                                      str(x) + ' in Betfair', 'if matchbook wins: ' + str(prof_net_if_matchbook_wins)]
+                        bf_wins_col = [betfair.iloc[i]['Event Name'], betfair.iloc[i]['Date'], bet_on, a, x_max, b,
+                                       y_max,
+                                       str(y) + ' in MatchBook',
+                                       str(x) + ' in Betfair', 'if betfair wins: ' + str(prof_net_if_betfair_wins)]
+                        to_append = pd.DataFrame([mb_win_col, bf_wins_col],
+                                                 columns=['Event Name', 'Date', 'Bet On', 'Best Lay Price',
+                                                          'Max Lay Size',
+                                                          'Best Back Price',
+                                                          'Max Back Size', 'should back:', 'should lay:', 'net prof:'])
+                        final_df_to_invest = pd.concat([to_append, final_df_to_invest])
+                        print("FOUND!!!! lay in betfair back in matchbook")
+                    else:
+                        offer_id = order_report_MB['id']
+                        cancel_url = 'https://api.matchbook.com/edge/rest/v2/offers/' + str(offer_id)
+                        response = requests.request("DELETE", cancel_url, headers=headers)
+                        print(response.text)
                 else:
-                    cancel_url = 'https://api.matchbook.com/edge/rest/v2/offers/offer_id'
+                    offer_id = order_report_MB['id']
+                    cancel_url = 'https://api.matchbook.com/edge/rest/v2/offers/' + str(offer_id)
                     response = requests.request("DELETE", cancel_url, headers=headers)
 
                     print(response.text)
@@ -229,7 +222,17 @@ def PureCalc(betfair, trading, matchbook, headers, c_betfair, c_matchbook):
                 m2.solve(disp=False)
                 x2 = round(x2.value[0], 2)
                 y2 = round(y2.value[0], 2)
-
+                print("trying to place bets, found arbitrage!!")
+                limit_order = filters.limit_order(
+                    size=double(y2), price=double(b),  # persistence_type="LAPSE",
+                    time_in_force="FILL_OR_KILL", min_fill_size=double(y2)
+                )
+                instruction = filters.place_instruction(
+                    order_type="LIMIT",
+                    selection_id=selection_id,
+                    side="BACK",
+                    limit_order=limit_order,
+                )
                 # try order in matchbook
                 querystring = {"odds-type": "DECIMAL",
                                "exchange-type": "back-lay",
@@ -245,55 +248,56 @@ def PureCalc(betfair, trading, matchbook, headers, c_betfair, c_matchbook):
 
                 response = requests.request("POST", url_offer_matchbook, data=json.dumps(querystring), headers=headers)
                 order_report_MB = response.json()['offers'][0]
-                offer_id = order_report_MB['id']
+                print("MB oreder status: " + order_report_MB['status'])
+                if order_report_MB['status'] == "matched":  # TODO cancel matchbook if order in betfair is not completed
 
-                if order_report_MB['status'] == "matched":#TODO cancel matchbook if order in betfair is not completed
-                    limit_order = filters.limit_order(
-                        size=double(y2), price=double(b),  # persistence_type="LAPSE",
-                        time_in_force="FILL_OR_KILL", min_fill_size=double(y2)
-                    )
-                    instruction = filters.place_instruction(
-                        order_type="LIMIT",
-                        selection_id=selection_id,
-                        side="BACK",
-                        limit_order=limit_order,
-                    )
                     order_report_BF = trading.betting.place_orders(
                         market_id=market_id, instructions=[instruction]  # list
                     )
+                    if order_report_BF.place_instruction_reports[0].order_status == 'EXECUTION_COMPLETE':
+                        print(order_report_MB)
+                        print(order_report_BF.place_instruction_reports[0].order_status)
+                        rev_if_matchbook = (x2 * (1 - c_matchbook))
+                        loss_if_matchbook = y2
+                        prof_net_if_matchbook_wins = rev_if_matchbook - loss_if_matchbook
 
-                    print(order_report_MB)
-                    print(order_report_BF.place_instruction_reports[0].order_status)
-                    rev_if_matchbook = (x2 * (1 - c_matchbook))
-                    loss_if_matchbook = y2
-                    prof_net_if_matchbook_wins = rev_if_matchbook - loss_if_matchbook
+                        # if back wins in betfair
+                        rev_if_betfair = ((y2 * b) - y2) * (1 - c_betfair)
+                        loss_if_betfair = (a * x2) - x2
+                        prof_net_if_betfair_wins = rev_if_betfair - loss_if_betfair
 
-                    # if back wins in betfair
-                    rev_if_betfair = ((y2 * b) - y2) * (1 - c_betfair)
-                    loss_if_betfair = (a * x2) - x2
-                    prof_net_if_betfair_wins = rev_if_betfair - loss_if_betfair
+                        stuff += "\ncompered '" + betfair.iloc[i]['Event Name'] + "' in betfair to '" + \
+                                 matchbook.iloc[i][
+                                     'Event Name'] + "' in matchbook\n"
 
-                    stuff += "\ncompered '" + betfair.iloc[i]['Event Name'] + "' in betfair to '" + matchbook.iloc[i][
-                        'Event Name'] + "' in matchbook\n"
+                        mb_win_col = [betfair.iloc[i]['Event Name'], betfair.iloc[i]['Date'], bet_on, a, x_max, b,
+                                      y_max,
+                                      str(y2) + ' in Betfair',
+                                      str(x2) + ' in MatchBook',
+                                      'if matchbook wins: ' + str(prof_net_if_matchbook_wins)]
+                        bf_wins_col = [betfair.iloc[i]['Event Name'], betfair.iloc[i]['Date'], bet_on, a, x_max, b,
+                                       y_max,
+                                       str(y2) + ' in Betfair',
+                                       str(x2) + ' in MatchBook', 'if betfair wins: ' + str(prof_net_if_betfair_wins)]
 
-                    mb_win_col = [betfair.iloc[i]['Event Name'], betfair.iloc[i]['Date'], bet_on, a, x_max, b, y_max,
-                                  str(y2) + ' in Betfair',
-                                  str(x2) + ' in MatchBook', 'if matchbook wins: ' + str(prof_net_if_matchbook_wins)]
-                    bf_wins_col = [betfair.iloc[i]['Event Name'], betfair.iloc[i]['Date'], bet_on, a, x_max, b, y_max,
-                                   str(y2) + ' in Betfair',
-                                   str(x2) + ' in MatchBook', 'if betfair wins: ' + str(prof_net_if_betfair_wins)]
-
-                    to_append = pd.DataFrame([mb_win_col, bf_wins_col],
-                                             columns=['Event Name', 'Date', 'Bet On', 'Best Lay Price', 'Max Lay Size',
-                                                      'Best Back Price', 'Max Back Size', 'should back:', 'should lay:',
-                                                      'net prof:'])
-                    final_df_to_invest = pd.concat([to_append, final_df_to_invest])
-                    print(
-                        "FOUND!!!! lay in matchbook and back in betfair")
+                        to_append = pd.DataFrame([mb_win_col, bf_wins_col],
+                                                 columns=['Event Name', 'Date', 'Bet On', 'Best Lay Price',
+                                                          'Max Lay Size',
+                                                          'Best Back Price', 'Max Back Size', 'should back:',
+                                                          'should lay:',
+                                                          'net prof:'])
+                        final_df_to_invest = pd.concat([to_append, final_df_to_invest])
+                        print(
+                            "FOUND!!!! lay in matchbook and back in betfair")
+                    else:
+                        offer_id = order_report_MB['id']
+                        cancel_url = 'https://api.matchbook.com/edge/rest/v2/offers/' + str(offer_id)
+                        response = requests.request("DELETE", cancel_url, headers=headers)
+                        print(response.text)
                 else:
-                    cancel_url = 'https://api.matchbook.com/edge/rest/v2/offers/'+offer_id
+                    offer_id = order_report_MB['id']
+                    cancel_url = 'https://api.matchbook.com/edge/rest/v2/offers/' + str(offer_id)
                     response = requests.request("DELETE", cancel_url, headers=headers)
-
                     print(response.text)
             except Exception as e:
                 print(e)
@@ -304,7 +308,7 @@ def PureCalc(betfair, trading, matchbook, headers, c_betfair, c_matchbook):
 def CalculateArb(site_1, trading, site_2, headers, c1, c2):
     # site_1 betfair site_2 Matchbook
 
-    t = "C:/Users/Administrator/Desktop/ScriptLog/omri_to_chk10.csv"
+    t = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Match_Odds/omri_to_chk_25_09.csv"
     tuff = '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
 
     # write metadata
@@ -324,10 +328,10 @@ def CalculateArb(site_1, trading, site_2, headers, c1, c2):
     site_2 = site_2.sort_values('Event Name', kind='mergesort').reset_index(drop=True)
 
     # append all names of the teams to csv of names, ne for each site:
-    betfair_team_names_path = "C:/Users/Administrator/Desktop/ScriptLog/BetFairTeamsName.csv"
+    betfair_team_names_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/BetFairTeamsName.csv"
     q = site_1.loc[:, 'Bet On']
     q.to_csv(betfair_team_names_path, index=True, mode='a')
-    matchbook_team_names_path = "C:/Users/Administrator/Desktop/ScriptLog/MatchBookTeamsName.csv"
+    matchbook_team_names_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/MatchBookTeamsName.csv"
     q = site_2.loc[:, 'Bet On']
     q.to_csv(matchbook_team_names_path, index=True,
              mode='a')  # TODO make a seperate code for this searching historical data api. in match book chk how also.
@@ -340,21 +344,25 @@ def CalculateArb(site_1, trading, site_2, headers, c1, c2):
         for i1, r1 in site_1.drop_duplicates(subset='Event Name', keep='first').iterrows():
             bfname = r1['Event Name']
             mbname = r2['Event Name']
+
             if (SequenceMatcher(a=r1['Event Name'], b=r2['Event Name']).ratio() >= 0.65):
-                # check for arbitrage:
-                bet_fair_to_chk = site_1.loc[site_1['Event Name'] == r1['Event Name']]
-                # del bet_fair_to_chk['index']
-                bet_fair_to_chk = bet_fair_to_chk.reset_index(drop=True)
-                matchbook_to_chk = site_2.loc[site_2['Event Name'] == r2['Event Name']]
-                # del matchbook_to_chk['index']
-                matchbook_to_chk = matchbook_to_chk.reset_index(drop=True)
+                t2 = datetime.fromisoformat(r2['Date'][:-1]).strftime('%Y-%m-%d %H:%M:%S')
+                t1 = r1['Date'].strftime('%Y-%m-%d %H:%M:%S')
+                if t1 == t2:
+                    # check for arbitrage:
+                    bet_fair_to_chk = site_1.loc[site_1['Event Name'] == r1['Event Name']]
+                    # del bet_fair_to_chk['index']
+                    bet_fair_to_chk = bet_fair_to_chk.reset_index(drop=True)
+                    matchbook_to_chk = site_2.loc[site_2['Event Name'] == r2['Event Name']]
+                    # del matchbook_to_chk['index']
+                    matchbook_to_chk = matchbook_to_chk.reset_index(drop=True)
 
-                df_append_result, tempstuff = PureCalc(bet_fair_to_chk, trading, matchbook_to_chk, headers, c1, c2)
-                stuff += tempstuff
-                df_of_result = df_of_result.append(df_append_result, ignore_index=True)
-                break
+                    df_append_result, tempstuff = PureCalc(bet_fair_to_chk, trading, matchbook_to_chk, headers, c1, c2)
+                    stuff += tempstuff
+                    df_of_result = df_of_result.append(df_append_result, ignore_index=True)
+                    break
 
-    t = "C:/Users/Administrator/Desktop/ScriptLog/log15.csv"
+    t = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Match_Odds/log_25_09.csv"
     stuff += '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
 
     # write metadata
@@ -366,10 +374,10 @@ def CalculateArb(site_1, trading, site_2, headers, c1, c2):
     return df_of_result
 
 
-def Main_to_run(sc=None):
+def Main_to_run(headers, sc=None):
     start_time = time.time()
 
-    m_b_df, headers = MatchBook.GetMatchBookDF(wanted_league='Ligue 1')
+    m_b_df, headers = MatchBook.GetMatchBookDF(wanted_league='Ligue 1', headers=headers)
     b_f_df, trading = BetFair.GetBetFairDF(wanted_league='Ligue 1')
     c_matchbook = 0.04
     c_betfair = 0.05
@@ -378,25 +386,34 @@ def Main_to_run(sc=None):
 
     # measure time and show on console:
     print("--- %s seconds ---" % (time.time() - start_time))
-    # r = MatchBook.logout(headers)
-    # if r.status_code == 200:
-    #     print("Logged out successfully")
-    # else:
-    #     print(r.text)
-    # s.enter(15, 1, Main_to_run, (sc,))
-
 
 if __name__ == "__main__":
-    # s.enter(15, 1, Main_to_run, (s,))
-    # s.run()
-    counter = 0
+    last_login = datetime.utcnow()
+    #first login to api.
+    r = MatchBook.login()
+    if r.status_code != 200:
+        raise ConnectionError(
+            'something went wrong connecting to server status code: ' + str(r.status_code))
+
+    SessionTok = r.json()["session-token"]
+    headers = {"Content-Type": "application/json;", "session-token": SessionTok}
     while True:
         try:
-            Main_to_run()
-            counter += 1
-            if counter == 1000:
-                counter = 0
-                Clean.CleanNames()
+            now_time = datetime.utcnow()
+            if (last_login - now_time).seconds // 3600 > 4:
+                # login to api.
+                r = MatchBook.login()
+                if r.status_code != 200:
+                    raise ConnectionError(
+                        'something went wrong connecting to server status code: ' + str(r.status_code))
+                last_login = datetime.utcnow()
+                SessionTok = r.json()["session-token"]
+                headers = {"Content-Type": "application/json;", "session-token": SessionTok}
+            Main_to_run(headers)
+            # counter += 1
+            # if counter == 1000:
+            #     counter = 0
+            #     Clean.CleanNames()
         except Exception as ex:
             print("there was an exeption unrelated to lp solve!!!")
             print(ex)

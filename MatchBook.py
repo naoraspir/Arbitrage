@@ -81,7 +81,7 @@ def GetFinalDf(events_dictionary):
     Event_Name_lst = []
     Date_list = []
     runners_lst = []
-    runners_id_lst=[]
+    runners_id_lst = []
     lay_price_lst = []
     lay_size_lst = []
     back_price_lst = []
@@ -101,17 +101,25 @@ def GetFinalDf(events_dictionary):
                     runners_lst.append(runner['name'])
                     runners_id_lst.append(runner['id'])
                     lay_price_lst.append(runner['prices'][1]['odds']
-                                         if (len(runner['prices']) != 0 and len(runner['prices']) != 1)
-                                         else 1.00)
+                                         if (len(runner['prices']) == 2)
+                                         else runner['prices'][0]['odds'] if (
+                            len(runner['prices']) == 1 and runner['prices'][0]['side'] == 'lay')
+                    else 1.00)
                     lay_size_lst.append(runner['prices'][1]['available-amount']
-                                        if (len(runner['prices']) != 0 and len(runner['prices']) != 1)
-                                        else 0)
+                                        if (len(runner['prices']) == 2)
+                                        else runner['prices'][0]['available-amount'] if (
+                            len(runner['prices']) == 1 and runner['prices'][0]['side'] == 'lay')
+                    else 0)
                     back_price_lst.append(runner['prices'][0]['odds']
-                                          if len(runner['prices']) != 0
-                                          else 1.00)
+                                          if (len(runner['prices']) == 2)
+                                          else runner['prices'][0]['odds'] if (
+                            len(runner['prices']) == 1 and runner['prices'][0]['side'] == 'back')
+                    else 1.00)
                     back_size_lst.append(runner['prices'][0]['available-amount']
-                                         if len(runner['prices']) != 0
-                                         else 0)
+                                         if (len(runner['prices']) == 2)
+                                         else runner['prices'][0]['available-amount'] if (
+                            len(runner['prices']) == 1 and runner['prices'][0]['side'] == 'back')
+                    else 0)
         except:
             continue
 
@@ -120,7 +128,7 @@ def GetFinalDf(events_dictionary):
         'Event Name': Event_Name_lst,
         'Date': Date_list,
         'Bet On': runners_lst,
-        'Runner Id' : runners_id_lst,
+        'Runner Id': runners_id_lst,
         'Best Lay Price': lay_price_lst,
         'Best Lay Size': lay_size_lst,
         'Best Back Price': back_price_lst,
@@ -130,15 +138,8 @@ def GetFinalDf(events_dictionary):
 
 
 # MAIN FUNCTION!
-def GetMatchBookDF(wanted_sport='Soccer', weeks_ahead_to_search=2, wanted_league='UEFA', bet_type='MATCH_ODDS'):
-    # login to api.
-    r = login()
-    if r.status_code != 200:
-        raise ConnectionError('something went wrong connecting to server status code: ' + str(r.status_code))
-
-    SessionTok = r.json()["session-token"]
-    headers = {"Content-Type": "application/json;" ,"session-token":SessionTok}
-
+def GetMatchBookDF(wanted_sport='Soccer', weeks_ahead_to_search=2, wanted_league='UEFA', bet_type='MATCH_ODDS',
+                   headers=""):
     # get the wanted sport id.
     sportName = wanted_sport  # USER VAR
     sportIds = getSportId(sportName, headers)
@@ -151,9 +152,4 @@ def GetMatchBookDF(wanted_sport='Soccer', weeks_ahead_to_search=2, wanted_league
     LeagueName = wanted_league  # USER VAR
     LeagueEventsDict = FilterByLeague(SportEvents, LeagueName)
     final_df = GetFinalDf(LeagueEventsDict)
-    # r = logout(headers)
-    # if r.status_code == 200:
-    #     print("Logged out successfully")
-    # else:
-    #     print(r.text)
     return final_df, headers
