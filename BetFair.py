@@ -5,6 +5,25 @@ import betfairlightweight
 import pandas as pd
 
 
+def login():
+    # Change this certs path to wherever you're storing your certificates
+    certs_path = r'C:\Users\Administrator\Desktop\certs'
+
+    # Change these login details to your own
+    my_username = "charlotteemeijer@protonmail.com"
+    my_password = "Um3yp6sis0s"
+    my_app_key = "l1iIyzDSriFuUeci"
+
+    trading = betfairlightweight.APIClient(username=my_username,
+                                           password=my_password,
+                                           app_key=my_app_key,
+                                           certs=certs_path)
+
+    trading.login()
+
+    return trading
+
+
 def GetSportId(trading, SportsName):
     # Filter for just the chosen sport
     Sport_filter = betfairlightweight.filters.market_filter(text_query=SportsName)
@@ -49,10 +68,12 @@ def GetUpcomingEventsIdLst(trading, SportId, daysNum, nation=None, competitionId
     # Define a market filter
     thoroughbreds_event_filter = betfairlightweight.filters.market_filter(
         event_type_ids=[SportId],
+        # event_ids=['30036578'],
         # market_countries=[nation],
         # competition_ids=competitionIds,
         market_start_time={'from': datetime.datetime.utcnow().strftime("%Y-%m-%dT%TZ"),
-                           'to': (datetime.datetime.utcnow() + datetime.timedelta(days=daysNum)).strftime("%Y-%m-%dT%TZ")
+                           'to': (datetime.datetime.utcnow() + datetime.timedelta(days=daysNum)).strftime(
+                               "%Y-%m-%dT%TZ")
                            }
     )
 
@@ -81,8 +102,8 @@ def GetFinalDf(trading, event_id_lst, BetType):
     # create lists for all fields in the data frame
     market_ids_lst = []
     Event_Name_lst = []
-    market_ids_for_df=[]
-    selection_ids=[]
+    market_ids_for_df = []
+    selection_ids = []
     Date_list = []
     runners_lst = []
     lay_price_lst = []
@@ -121,7 +142,8 @@ def GetFinalDf(trading, event_id_lst, BetType):
     # recive market books with all relevant information.(for the first batch in size 100)
     market_books = trading.betting.list_market_book(
         market_ids=market_ids_lst[0:100],
-        price_projection=price_filter
+        price_projection=price_filter,
+        currency_code="USD"
     )
     j = 100
     for i in range(200, len(market_ids_lst) + 100, 100):
@@ -161,10 +183,10 @@ def GetFinalDf(trading, event_id_lst, BetType):
     # Create a DataFrame for each market\event
     final_betfair_table = pd.DataFrame({
         'Event Name': Event_Name_lst,
-        'Market Id':market_ids_for_df,
+        'Market Id': market_ids_for_df,
         'Date': Date_list,
         'Bet On': runners_lst,
-        'Selection Id':selection_ids,
+        'Selection Id': selection_ids,
         'Best Lay Price': lay_price_lst,
         'Best Lay Size': lay_size_lst,
         'Best Back Price': back_price_lst,
@@ -175,22 +197,8 @@ def GetFinalDf(trading, event_id_lst, BetType):
 
 
 # MAIN FUNCTION!
-def GetBetFairDF(wanted_sport='Soccer', days_ahead_to_search=1, wanted_league='UEFA', bet_type='MATCH_ODDS'):
-    # Change this certs path to wherever you're storing your certificates
-    certs_path = r'C:\Users\Administrator\Desktop\certs'
-
-    # Change these login details to your own
-    my_username = "charlotteemeijer@protonmail.com"
-    my_password = "Um3yp6sis0s"
-    my_app_key = "l1iIyzDSriFuUeci"
-
-    trading = betfairlightweight.APIClient(username=my_username,
-                                           password=my_password,
-                                           app_key=my_app_key,
-                                           certs=certs_path)
-
-    trading.login()
-    ssoid = trading.session_token
+def GetBetFairDF(trading, wanted_sport='Soccer', days_ahead_to_search=1, wanted_league='UEFA', bet_type='MATCH_ODDS'):
+    # ssoid = trading.session_token
 
     # get the wanted sport id.
     sportName = wanted_sport  # USER VAR
@@ -198,7 +206,7 @@ def GetBetFairDF(wanted_sport='Soccer', days_ahead_to_search=1, wanted_league='U
 
     # create a data frame with all of the chosen sport's competitions for the next daysNum as a pairs sports name:sport id.
     daysNum = days_ahead_to_search  # USER VAR
-    trading.betting.read_timeout=100
+    trading.betting.read_timeout = 100
     Sport_events_id_lst = GetUpcomingEventsIdLst(trading, SportId, daysNum)
     # SportCompetitions = createDFCompetitions(trading, SportId, daysNum)
 

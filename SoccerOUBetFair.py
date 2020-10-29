@@ -4,6 +4,23 @@ import datetime
 import betfairlightweight
 import pandas as pd
 
+def login():
+    # Change this certs path to wherever you're storing your certificates
+    certs_path = r'C:\Users\Administrator\Desktop\certs'
+
+    # Change these login details to your own
+    my_username = "charlotteemeijer@protonmail.com"
+    my_password = "Um3yp6sis0s"
+    my_app_key = "l1iIyzDSriFuUeci"
+
+    trading = betfairlightweight.APIClient(username=my_username,
+                                           password=my_password,
+                                           app_key=my_app_key,
+                                           certs=certs_path)
+
+    trading.login()
+
+    return trading
 
 def GetSportId(trading, SportsName):
     # Filter for just the chosen sport
@@ -132,7 +149,8 @@ def GetFinalDf(trading, event_id_lst, BetType):
     # recive market books with all relevant information.(for the first batch in size 100)
     market_books = trading.betting.list_market_book(
         market_ids=market_ids_lst[0:100],
-        price_projection=price_filter
+        price_projection=price_filter,
+        currency_code="USD"
     )
     j = 100
     for i in range(200, len(market_ids_lst) + 100, 100):
@@ -186,23 +204,7 @@ def GetFinalDf(trading, event_id_lst, BetType):
 
 
 # MAIN FUNCTION!
-def GetBetFairDF(wanted_sport='Soccer', days_ahead_to_search=1, wanted_league='UEFA', bet_type='MATCH_ODDS'):
-    # Change this certs path to wherever you're storing your certificates
-    certs_path = r'C:\Users\Administrator\Desktop\certs'
-
-    # Change these login details to your own
-    my_username = "charlotteemeijer@protonmail.com"
-    my_password = "Um3yp6sis0s"
-    my_app_key = "l1iIyzDSriFuUeci"
-
-    trading = betfairlightweight.APIClient(username=my_username,
-                                           password=my_password,
-                                           app_key=my_app_key,
-                                           certs=certs_path)
-
-    trading.login()
-    ssoid = trading.session_token
-
+def GetBetFairDF(trading, wanted_sport='Soccer', days_ahead_to_search=1, wanted_league='UEFA', bet_type='MATCH_ODDS'):
     # get the wanted sport id.
     sportName = wanted_sport  # USER VAR
     SportId = GetSportId(trading, sportName)

@@ -60,10 +60,14 @@ def getSportsEvents(ids, headers, tags):
     querystring = {"offset": "0", "per-page": "5000", "states": "open",
                    "exchange-type": "back-lay", "odds-type": "DECIMAL", "include-prices": "true", "price-depth": "1",
                    "price-mode": "expanded", "include-event-participants": "false",
-                   "sport-ids": strIds, "before": before}  # ,'tag-url-names':tags}
+                   "sport-ids": strIds, "before": before,"currency":"USD"}  # "ids": number set for liverpool arsenal , "ids":
 
     response = requests.request("GET", url, headers=headers, params=querystring)
-    events = response.json()["events"]
+    events=[]
+    events2 = response.json()["events"]
+    for event in events2:
+        if event['in-running-flag']==False:
+            events.append(event)
     return events
 
 
@@ -146,7 +150,7 @@ def GetMatchBookDF(wanted_sport='Soccer', weeks_ahead_to_search=2, wanted_league
 
     # get the events for chosen sport. use tags to reach sepc events
     tags = 'uefa-champions-league-qualification,regional'  # USER VAR
-    SportEvents = getSportsEvents(sportIds, headers, tags)
+    SportEvents = getSportsEvents(sportIds, headers, tags)#sportIds instead of num 1550228595500003
 
     # get the events for a specific league.
     LeagueName = wanted_league  # USER VAR

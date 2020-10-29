@@ -60,7 +60,7 @@ def getSportsEvents(ids, headers, tags):
     querystring = {"offset": "0", "per-page": "5000", "states": "open",
                    "exchange-type": "back-lay", "odds-type": "DECIMAL", "include-prices": "true", "price-depth": "1",
                    "price-mode": "expanded", "include-event-participants": "false",
-                   "sport-ids": strIds, "before": before}  # ,'tag-url-names':tags}
+                   "sport-ids": strIds, "before": before,"currency":"USD"}  # ,'tag-url-names':tags}
 
     response = requests.request("GET", url, headers=headers, params=querystring)
     events = response.json()["events"]
