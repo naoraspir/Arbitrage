@@ -21,6 +21,7 @@ def login():
 
     trading.login()
 
+
     return trading
 
 
@@ -68,6 +69,7 @@ def GetUpcomingEventsIdLst(trading, SportId, daysNum, nation=None, competitionId
     # Define a market filter
     thoroughbreds_event_filter = betfairlightweight.filters.market_filter(
         event_type_ids=[SportId],
+        in_play_only=False,
         # event_ids=['30036578'],
         # market_countries=[nation],
         # competition_ids=competitionIds,

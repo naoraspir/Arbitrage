@@ -63,7 +63,11 @@ def getSportsEvents(ids, headers, tags):
                    "sport-ids": strIds, "before": before,"currency":"USD"}  # ,'tag-url-names':tags}
 
     response = requests.request("GET", url, headers=headers, params=querystring)
-    events = response.json()["events"]
+    events = []
+    events2 = response.json()["events"]
+    for event in events2:
+        if event['in-running-flag'] == False:
+            events.append(event)
     return events
 
 

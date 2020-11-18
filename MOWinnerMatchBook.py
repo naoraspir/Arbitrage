@@ -4,6 +4,7 @@ import subprocess
 import time
 import traceback
 from _datetime import datetime
+from datetime import timedelta
 from difflib import SequenceMatcher
 import os
 from pathlib import Path
@@ -21,29 +22,32 @@ from pymysql.cursors import DictCursor
 
 import BetFair
 import MatchBook
+import config
 import telegramBot
 
-prog_log_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/prog_log_28_10.csv"
-t2 = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/omri_to_chk_28_10.csv"
-t = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/log_28_10.csv"
+prog_log_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/"+config.get_prog_log()
+t2 = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/"+config.get_omri()
+t = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/"+config.get_log()
+current_dir = r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/winner4marketsproxy1"
+bookie_url = 'C:/Users/Administrator/Desktop/Scraping (BAS)/Data/winner_end_result1X2.csv'
 log_info = ''
 somthing_happened = False
 
 
-def Pull_From_Bookie_DB(bookie_name):
-    with closing(
-            pymysql.connect(host='185.167.97.243', port=3306, user='root', password='Um3yp6sis0s!@#', db='scrapingdb',
-                            cursorclass=DictCursor)) as connection:
-        with connection.cursor() as cursor:
-            query = """
-            SELECT
-                *
-            FROM
-                winner
-            """
-            cursor.execute(query)
-            for row in cursor:
-                print(row)
+# def Pull_From_Bookie_DB(bookie_name):
+#     with closing(
+#             pymysql.connect(host='185.167.97.243', port=3306, user='root', password='Um3yp6sis0s!@#', db='scrapingdb',
+#                             cursorclass=DictCursor)) as connection:
+#         with connection.cursor() as cursor:
+#             query = """
+#             SELECT
+#                 *
+#             FROM
+#                 winner
+#             """
+#             cursor.execute(query)
+#             for row in cursor:
+#                 print(row)
 
 
 # solves and places arb and update log correspondingly !!
@@ -184,7 +188,8 @@ def Solve_And_Place_Arb(exchange=None, bookie=None, x_max=None, y_max=None, a=No
         # if order_report_BF.place_instruction_reports[0].order_status == 'EXECUTION_COMPLETE':
 
         text = 'FOUNED!!!! game: ' + str(exchange[
-                                             'Event Name']) + ', bet on: ' + bet_on + '\n' + ' lay in ' + lay_in + ' back in ' + back_in + '\n' + 'if ' + back_in + ' wins: ' + str(
+                                             'Event Name']) + ', bet on: ' + bet_on + '\n' + ' lay ' + str(
+            x) + ' in ' + lay_in + '\n back ' + str(y) + ' in ' + back_in + '\n' + 'if ' + back_in + ' wins: ' + str(
             prof_net_if_back_wins) + '\n' + 'if ' + lay_in + ' wins: ' + str(prof_net_if_lay_wins) + '\n'
         print(text)
         telegramBot.send_msg(text)
@@ -266,7 +271,7 @@ def Solve_And_Place_Arb(exchange=None, bookie=None, x_max=None, y_max=None, a=No
         return final_df_to_invest, stuff
 
 
-def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=None, c_matchbook=None, log_times=None,
+def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=0, c_matchbook=0, log_times=None,
              log_infos=None, mb_log_dfs=None,
              bf_log_dfs=None):
     # for each option we check if there is an arbitrage.
@@ -301,7 +306,7 @@ def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=N
         runner_id = long(exchange.iloc[i]['Runner Id'])
         url_offer_matchbook = 'https://api.matchbook.com/edge/rest/v2/offers'
         # Restricting the amount lost to r dollars!
-        restriction = 100
+        restriction = 1000
 
         # lay in betfair and back in matchbook
         # lay_in = 'Betfair'
@@ -335,10 +340,11 @@ def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=N
         back_in = 'Winner'
         bookie_side = 'BACK'
         exchange_side = 'lay'
+        bet_on = bookie.iloc[i]['Bet On']
         x_max = exchange.iloc[i]['Best Lay Size']  # max!!
         y_max = restriction  # bookie.iloc[i]['Best Back Size']  # max!!
         a = exchange.iloc[i]['Best Lay Price']
-        b = bookie.iloc[i]['Best Back Price']
+        b = float(bookie.iloc[i]['Best Back Price'])
         c_back = c_betfair
         c_lay = c_matchbook
 
@@ -352,7 +358,7 @@ def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=N
                                                               mb_min_bet_size=mb_min_bet_size,
                                                               bf_min_bet_size=bf_min_bet_size, restriction=restriction,
                                                               log_times=log_times, log_infos=log_infos,
-                                                              mb_log_dfs=mb_log_dfs, bf_log_dfs=bf_log_dfs)
+                                                              mb_log_dfs=mb_log_dfs, bf_log_dfs=bf_log_dfs, bet_on=bet_on)
     stuff1 += stuff2
     final_df_to_invest1.append(final_df_to_invest2)
     return final_df_to_invest1, stuff1
@@ -381,37 +387,37 @@ def CalculateArb(site_1=None, trading=None, site_2=None, headers=None, c_betfair
         for i1, r1 in site_1.drop_duplicates(subset='Event Name', keep='first').iterrows():
             # bfname = r1['Event Name']
             # mbname = r2['Event Name']
-            if SequenceMatcher(a=r1['Event Name'], b=r2['Event Name']).ratio() >= 0.65:
-                # t2 = datetime.fromisoformat(r2['Date'][:-1]).strftime('%Y-%m-%d %H:%M:%S')
-                # t1 = r1['Date'].strftime('%Y-%m-%d %H:%M:%S')
-                # if t1 == t2:
-                # check for arbitrage:
-                bookie_to_chk = site_1.loc[site_1['Event Name'] == r1['Event Name']]
-                bookie_to_chk = bookie_to_chk.reset_index(drop=True)
-                exchange_to_chk = site_2.loc[site_2['Event Name'] == r2['Event Name']]
-                exchange_to_chk = exchange_to_chk.reset_index(drop=True)
+            if SequenceMatcher(a=r1['Event Name'], b=r2['Event Name']).ratio() >= 0.6:
+                time2 = (datetime.fromisoformat(r2['Date'][:-1])+timedelta(hours=2)).strftime('%Y.%m.%dT%H:%M:%SZ')
+                time1 = r1['Date'].replace(" ", "")
+                if time1 == time2:
+                    # check for arbitrage:
+                    bookie_to_chk = site_1.loc[site_1['Event Name'] == r1['Event Name']]
+                    bookie_to_chk = bookie_to_chk.reset_index(drop=True)
+                    exchange_to_chk = site_2.loc[site_2['Event Name'] == r2['Event Name']]
+                    exchange_to_chk = exchange_to_chk.reset_index(drop=True)
 
-                df_append_result, tempstuff = PureCalc(bookie_to_chk, trading, exchange_to_chk, headers,
-                                                       c_betfair, c_matchbook, log_times, log_infos, mb_log_dfs,
-                                                       bf_log_dfs)
-                stuff += tempstuff
-                if ~df_append_result.empty:
-                    df_of_result = df_of_result.append(df_append_result, ignore_index=True)
-                break
+                    df_append_result, tempstuff = PureCalc(bookie_to_chk, trading, exchange_to_chk, headers,
+                                                           c_betfair, c_matchbook, log_times, log_infos, mb_log_dfs,
+                                                           bf_log_dfs)
+                    stuff += tempstuff
+                    if ~df_append_result.empty:
+                        df_of_result = df_of_result.append(df_append_result, ignore_index=True)
+                    break
 
     if somthing_happened:
         tuff = '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
 
         # write metadata
-        with open(t2, "a") as f:
-            f.write(tuff)
-            f.write('\n Winner \n')
-
-        site_1.to_csv(t2, index=True, mode='a')
-        with open(t2, "a") as f:
-            f.write("\n")
-            f.write('\n MATCHBOOK \n')
-        site_2.to_csv(t2, index=True, mode='a')
+        # with open(t2, "a") as f:
+        #     f.write(tuff)
+        #     f.write('\n Winner \n')
+        #
+        # site_1.to_csv(t2, index=True, mode='a')
+        # with open(t2, "a") as f:
+        #     f.write("\n")
+        #     f.write('\n MATCHBOOK \n')
+        # site_2.to_csv(t2, index=True, mode='a')
 
         # write metadata
         with open(t, "a") as f:
@@ -436,11 +442,10 @@ def Main_to_run(headers=None, bookie_df=None, trading=None, sc=None):
     start_time = time.time()
     # add col names to bookie df:
     columns = ['Event Name', 'Date', 'Bet On', 'Best Back Price']
-    winner_url = 'C:/Users/Administrator/Desktop/Scraping (BAS)/Data/winner.csv'
     # my_file = Path(winner_url)
-    while not os.path.isfile(winner_url):
+    while not os.path.isfile(bookie_url):
         continue
-    winner_df = pd.read_csv(winner_url, names=columns)
+    bookie_df = pd.read_csv(bookie_url, names=columns)
     m_b_df, headers = MatchBook.GetMatchBookDF(wanted_league='Ligue 1', headers=headers)
 
     # x = len(m_b_df['Event Name'].value_counts())
@@ -455,7 +460,7 @@ def Main_to_run(headers=None, bookie_df=None, trading=None, sc=None):
     c_matchbook = 0.04
     # c_betfair = 0.05
 
-    CalculateArb(site_1=winner_df, site_2=m_b_df, headers=headers, c_matchbook=c_matchbook)
+    CalculateArb(site_1=bookie_df, site_2=m_b_df, headers=headers, c_matchbook=c_matchbook)
 
     # measure time and show on console:
     print("--- %s seconds ---" % (time.time() - start_time))
@@ -477,15 +482,14 @@ if __name__ == "__main__":
     #     f.write(log_info)
     SessionTok = r.json()["session-token"]
     headers = {"Content-Type": "application/json;", "session-token": SessionTok}
-    current_dir = r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/winnerstandalone1h"
-    p = subprocess.Popen(os.path.join(current_dir, "RemoteExecuteScriptSilent.exe"))
-    p.wait()
+    # p = subprocess.Popen(os.path.join(current_dir, "RemoteExecuteScriptSilent.exe"))
+    # p.wait()
     # bookie_df = Pull_From_Bookie_DB("winner")  # TODO con the pull from db
     while True:
         try:
             now_time = datetime.utcnow()
             delta = now_time - last_login
-            if delta.seconds // 3600 > 1:
+            if delta.seconds // 60 > 4:
                 # login to api.
                 r = MatchBook.login()
                 # trading = BetFair.login()
@@ -498,9 +502,9 @@ if __name__ == "__main__":
                 # with open(prog_log_path, "a") as f:
                 #     f.write(log_time)
                 #     f.write(log_info)
-                current_dir = r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/winnerstandalone1h"
-                p = subprocess.Popen(os.path.join(current_dir, "RemoteExecuteScriptSilent.exe"))
-                p.wait()
+                # current_dir = r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/winnerstandalone1h"
+                # p = subprocess.Popen(os.path.join(current_dir, "RemoteExecuteScriptSilent.exe"))
+                # p.wait()
                 last_login = datetime.utcnow()
                 SessionTok = r.json()["session-token"]
                 headers = {"Content-Type": "application/json;", "session-token": SessionTok}

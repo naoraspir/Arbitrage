@@ -66,6 +66,7 @@ def GetUpcomingEventsIdLst(trading, SportId, daysNum, nation=None, competitionId
     # Define a market filter
     thoroughbreds_event_filter = betfairlightweight.filters.market_filter(
         event_type_ids=[SportId],
+        in_play_only=False,
         # market_countries=[nation],
         # competition_ids=competitionIds,
         market_start_time={'from': datetime.datetime.utcnow().strftime("%Y-%m-%dT%TZ"),

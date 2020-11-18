@@ -1,20 +1,14 @@
-import json
-import sched
 import time
 import traceback
 from _datetime import datetime
 from difflib import SequenceMatcher
 
 import pandas as pd
-import pulp as p
-import requests
-from betfairlightweight import filters
-from gekko import GEKKO
-from numpy import double, long
+from numpy import long
 
 import SoccerOUBetFair
 import SoccerOUMatchBook
-from CalculateArbitrage import Solve_And_Place_Arb
+from other.CalculateArbitrage import Solve_And_Place_Arb
 
 prog_log_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/OVER_UNDER/prog_log_15_10.csv"
 log_info = ''
