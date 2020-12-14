@@ -25,10 +25,10 @@ import MatchBook
 import config
 import telegramBot
 
-prog_log_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/"+config.get_prog_log()
-t2 = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/"+config.get_omri()
-t = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/"+config.get_log()
-current_dir = r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/winner4marketsproxy1"
+prog_log_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/" + config.get_prog_log()
+t2 = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/" + config.get_omri()
+t = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/" + config.get_log()
+current_dir = r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/winneryaapi1.1"
 bookie_url = 'C:/Users/Administrator/Desktop/Scraping (BAS)/Data/winner_end_result1X2.csv'
 log_info = ''
 somthing_happened = False
@@ -188,8 +188,9 @@ def Solve_And_Place_Arb(exchange=None, bookie=None, x_max=None, y_max=None, a=No
         # if order_report_BF.place_instruction_reports[0].order_status == 'EXECUTION_COMPLETE':
 
         text = 'FOUNED!!!! game: ' + str(exchange[
-                                             'Event Name']) + ', bet on: ' + bet_on + '\n' + ' lay ' + str(
-            x) + ' in ' + lay_in + '\n back ' + str(y) + ' in ' + back_in + '\n' + 'if ' + back_in + ' wins: ' + str(
+                                             'Event Name']) + ', bet on: ' + bet_on + '\n' + ' lay size ' + str(
+            x) + ' for odds ' + str(a) + ' in ' + lay_in + '\n back size ' + str(y) + ' for odds ' + str(
+            b) + ' in ' + back_in + '\n' + 'if ' + back_in + ' wins: ' + str(
             prof_net_if_back_wins) + '\n' + 'if ' + lay_in + ' wins: ' + str(prof_net_if_lay_wins) + '\n'
         print(text)
         telegramBot.send_msg(text)
@@ -358,7 +359,8 @@ def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=0
                                                               mb_min_bet_size=mb_min_bet_size,
                                                               bf_min_bet_size=bf_min_bet_size, restriction=restriction,
                                                               log_times=log_times, log_infos=log_infos,
-                                                              mb_log_dfs=mb_log_dfs, bf_log_dfs=bf_log_dfs, bet_on=bet_on)
+                                                              mb_log_dfs=mb_log_dfs, bf_log_dfs=bf_log_dfs,
+                                                              bet_on=bet_on)
     stuff1 += stuff2
     final_df_to_invest1.append(final_df_to_invest2)
     return final_df_to_invest1, stuff1
@@ -388,7 +390,7 @@ def CalculateArb(site_1=None, trading=None, site_2=None, headers=None, c_betfair
             # bfname = r1['Event Name']
             # mbname = r2['Event Name']
             if SequenceMatcher(a=r1['Event Name'], b=r2['Event Name']).ratio() >= 0.6:
-                time2 = (datetime.fromisoformat(r2['Date'][:-1])+timedelta(hours=2)).strftime('%Y.%m.%dT%H:%M:%SZ')
+                time2 = (datetime.fromisoformat(r2['Date'][:-1]) + timedelta(hours=2)).strftime('%Y.%m.%dT%H:%M:%SZ')
                 time1 = r1['Date'].replace(" ", "")
                 if time1 == time2:
                     # check for arbitrage:

@@ -4,6 +4,7 @@ import subprocess
 import time
 import traceback
 from _datetime import datetime
+from datetime import timedelta
 from difflib import SequenceMatcher
 import os
 from pathlib import Path
@@ -23,14 +24,15 @@ import BetFair
 import MOWinnerMatchBook
 import MatchBook
 import SoccerOUBetFair
-import config
 import telegramBot
 
-prog_log_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Expekt/betfair/Over_Under/p"+config.get_prog_log()
-t2 = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Expekt/betfair/Over_Under/"+config.get_omri()
-t = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Expekt/betfair/Over_Under/"+config.get_log()
-current_dir = r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/ExpektStandalone1hv5"
-bookie_url = 'C:/Users/Administrator/Desktop/Scraping (BAS)/Data/expekt(Total).csv'
+import config
+
+prog_log_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/betfair/Over_Under/"+config.get_prog_log()
+t2 = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/betfair/Over_Under/"+config.get_omri()
+t = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/betfair/Over_Under/"+config.get_log()
+current_dir = r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/winner4marketsproxy1"
+bookie_url = 'C:/Users/Administrator/Desktop/Scraping (BAS)/Data/winner_end_result(Above_Below).csv'
 log_info = ''
 somthing_happened = False
 
@@ -52,7 +54,7 @@ somthing_happened = False
 
 
 # solves and places arb and update log correspondingly !!
-# # solves and places arb and update log correspondingly !!
+# solves and places arb and update log correspondingly !!
 # def Solve_And_Place_Arb(exchange=None, bookie=None, x_max=None, y_max=None, a=None, b=None, c_back=None, c_lay=None, bet_on=None, runner_id=None, url_offer_matchbook=None,
 #                         headers=None , trading=None,selection_id=None,market_id=None, lay_in=None, back_in=None, stuff=None, final_df_to_invest=None,
 #                         mb_min_bet_size=None, bf_min_bet_size=None, restriction=None, log_times=None, log_infos=None, mb_log_dfs=None, bf_log_dfs=None):
@@ -273,8 +275,8 @@ somthing_happened = False
 def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=0, c_matchbook=0, log_times=None,
              log_infos=None, mb_log_dfs=None,
              bf_log_dfs=None):
-    bookie = bookie[~bookie['Bet On'].str.contains('8.5|7.5|6.5')]
-    exchange = exchange[~exchange['Bet On'].str.contains('/|1.0|2.0|3.0|4.0|5.0|6.0|7.0|6.5|7.5|8.5')]
+    # bookie = bookie[~bookie['Bet On'].str.contains('8.5|7.5|6.5')]
+    # exchange = exchange[~exchange['Bet On'].str.contains('/|1.0|2.0|3.0|4.0|5.0|6.0|7.0|6.5|7.5|8.5')]
     bookie = bookie.sort_values('Bet On', kind='mergesort').reset_index(drop=True)
     exchange = exchange.sort_values('Bet On', kind='mergesort').reset_index(drop=True)
 
@@ -345,7 +347,7 @@ def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=0
 
         # lay in matchbook and back in betfair
         lay_in = 'Betfair'
-        back_in = 'Expekt'
+        back_in = 'Winner'
         bookie_side = 'BACK'
         exchange_side = 'lay'
         bet_on = bookie.iloc[i]['Bet On']
@@ -388,22 +390,24 @@ def CalculateArb(site_1=None, trading=None, site_2=None, headers=None, c_betfair
     df_of_result = pd.DataFrame(columns=['Event Name', 'Date', 'Bet On', 'Best Lay Price', 'Max Lay Size',
                                          'Best Back Price', 'Max Back Size', 'should back:', 'should lay:',
                                          'net prof:'])
-    #clean quates from strings if there are any
-    for i, col in enumerate(site_1.columns):
-        site_1.iloc[:, i] = site_1.iloc[:, i].str.replace('"', '')
+    # clean quates from strings if there are any
+    # for i, col in enumerate(site_1.columns):
+    #     site_1.iloc[:, i] = site_1.iloc[:, i].str.replace('"', '')
 
     site_1.loc[:, 'Bet On'] = site_1.loc[:, 'Bet On'].str.upper()
     site_1.loc[:, 'Bet On'] = site_1.loc[:, 'Bet On'].str.lstrip()
+    site_1.loc[:, 'Bet On'] = site_1.loc[:, 'Bet On'].str.replace("BELOW","UNDER")
+    site_1.loc[:, 'Bet On'] = site_1.loc[:, 'Bet On'].str.replace('"','')
 
     for i2, r2 in site_2.drop_duplicates(subset='Event Name', keep='first').iterrows():
         for i1, r1 in site_1.drop_duplicates(subset='Event Name', keep='first').iterrows():
             # bfname = r1['Event Name']
             # mbname = r2['Event Name']
             if SequenceMatcher(a=r1['Event Name'], b=r2['Event Name']).ratio() >= 0.6:
-                time2 = (r2['Date']).strftime('%Y-%m-%dT%H:%M:%SZ')
-                time1 = r1['Date'].replace(" ", "")  # .strftime('%Y-%m-%d %H:%M:%S')
+                time2 = (r2['Date']+timedelta(hours=2)).strftime('%Y.%m.%dT%H:%M:%SZ')
+                time1 = r1['Date'].replace(" ", "")
                 if time1 == time2:
-                    # check for arbitrage:
+                    #check for arbitrage:
                     bookie_to_chk = site_1.loc[site_1['Event Name'] == r1['Event Name']]
                     bookie_to_chk = bookie_to_chk.reset_index(drop=True)
                     matchbook_to_chk = site_2.loc[site_2['Event Name'] == r2['Event Name']]
@@ -421,7 +425,7 @@ def CalculateArb(site_1=None, trading=None, site_2=None, headers=None, c_betfair
 
         tuff = '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
 
-        # # write metadata
+        # write metadata
         # with open(t2, "a") as f:
         #     f.write(tuff)
         #     f.write('\n Winner \n')
@@ -456,7 +460,7 @@ def Main_to_run(headers=None, bookie_df=None, trading=None, sc=None):
     # add col names to bookie df:
     columns = ['Event Name', 'Date', 'Bet On', 'Best Back Price']
 
-    # my_file = Path(bookie_url)
+    # my_file = Path(winner_url)
     while not os.path.isfile(bookie_url):
         continue
     bookie_df = pd.read_csv(bookie_url, names=columns)

@@ -8,13 +8,13 @@ def execute_Script(site_path, site_name):
     print('executing '+ site_name)
     p = subprocess.Popen(os.path.join(site_path, "RemoteExecuteScriptSilent.exe"))
     # p.wait()
-    time.sleep(120)
+    time.sleep(60)
     print('finished executing ' + site_name+' time taken:\n')
     # measure time and show on console:
     print("--- %s seconds ---" % (time.time() - start_time))
 
 if __name__ == "__main__":
-    path_winner=r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/winner4marketsv2.1"
+    path_winner=r"C:\Users\Administrator\AppData\Roaming\BrowserAutomationStudio\release\winner4mapidict"
     name_winner="Winner"
 
     path_5dimes= r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/5Dimesimroved.1"

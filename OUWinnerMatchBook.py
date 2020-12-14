@@ -4,6 +4,7 @@ import subprocess
 import time
 import traceback
 from _datetime import datetime
+from datetime import timedelta
 from difflib import SequenceMatcher
 import os
 from pathlib import Path
@@ -22,15 +23,15 @@ from pymysql.cursors import DictCursor
 import BetFair
 import MOWinnerMatchBook
 import MatchBook
-import SoccerOUBetFair
+import SoccerOUMatchBook
 import config
 import telegramBot
 
-prog_log_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Expekt/betfair/Over_Under/p"+config.get_prog_log()
-t2 = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Expekt/betfair/Over_Under/"+config.get_omri()
-t = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Expekt/betfair/Over_Under/"+config.get_log()
-current_dir = r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/ExpektStandalone1hv5"
-bookie_url = 'C:/Users/Administrator/Desktop/Scraping (BAS)/Data/expekt(Total).csv'
+prog_log_path = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/"+config.get_prog_log()
+t2 = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/"+config.get_omri()
+t = "C:/Users/Administrator/Desktop/ScriptLog/Soccer/Winner/matchbook/Match_Odds/"+config.get_log()
+current_dir = r"C:/Users/Administrator/AppData/Roaming/BrowserAutomationStudio/release/winner4marketsproxy1"
+bookie_url = 'C:/Users/Administrator/Desktop/Scraping (BAS)/Data/winner_end_result(Above_Below).csv'
 log_info = ''
 somthing_happened = False
 
@@ -52,10 +53,12 @@ somthing_happened = False
 
 
 # solves and places arb and update log correspondingly !!
-# # solves and places arb and update log correspondingly !!
-# def Solve_And_Place_Arb(exchange=None, bookie=None, x_max=None, y_max=None, a=None, b=None, c_back=None, c_lay=None, bet_on=None, runner_id=None, url_offer_matchbook=None,
-#                         headers=None , trading=None,selection_id=None,market_id=None, lay_in=None, back_in=None, stuff=None, final_df_to_invest=None,
-#                         mb_min_bet_size=None, bf_min_bet_size=None, restriction=None, log_times=None, log_infos=None, mb_log_dfs=None, bf_log_dfs=None):
+# def Solve_And_Place_Arb(exchange=None, bookie=None, x_max=None, y_max=None, a=None, b=None, c_back=None, c_lay=None,
+#                         bet_on=None, runner_id=None, url_offer_matchbook=None,
+#                         headers=None, trading=None, selection_id=None, market_id=None, lay_in=None, back_in=None,
+#                         stuff=None, final_df_to_invest=None,
+#                         mb_min_bet_size=None, bf_min_bet_size=None, restriction=None, log_times=None, log_infos=None,
+#                         mb_log_dfs=None, bf_log_dfs=None):
 #     global somthing_happened
 #     # LOG "back was higher then lay! :"
 #     log_time1 = '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
@@ -273,8 +276,9 @@ somthing_happened = False
 def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=0, c_matchbook=0, log_times=None,
              log_infos=None, mb_log_dfs=None,
              bf_log_dfs=None):
-    bookie = bookie[~bookie['Bet On'].str.contains('8.5|7.5|6.5')]
-    exchange = exchange[~exchange['Bet On'].str.contains('/|1.0|2.0|3.0|4.0|5.0|6.0|7.0|6.5|7.5|8.5')]
+    # for each option we check if there is an arbitrage.
+    # bookie = bookie[~bookie['Bet On'].str.contains('8.5|7.5|6.5')]
+    # exchange = exchange[~exchange['Bet On'].str.contains('/|1.0|2.0|3.0|4.0|5.0|6.0|7.0|6.5|7.5|8.5')]
     bookie = bookie.sort_values('Bet On', kind='mergesort').reset_index(drop=True)
     exchange = exchange.sort_values('Bet On', kind='mergesort').reset_index(drop=True)
 
@@ -308,11 +312,11 @@ def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=0
         mb_min_liability_size = 10
 
         # get corresponding market id and selection id in betfair
-        market_id = exchange.iloc[i]['Market Id']
-        selection_id = long(exchange.iloc[i]['Selection Id'])
+        # market_id = bookie.iloc[i]['Market Id']
+        # selection_id = long(bookie.iloc[i]['Selection Id'])
         # get corresponding runner id and offers url in matchbook
-        # runner_id = long(exchange.iloc[i]['Runner Id'])
-        # url_offer_matchbook = 'https://api.matchbook.com/edge/rest/v2/offers'
+        runner_id = long(exchange.iloc[i]['Runner Id'])
+        url_offer_matchbook = 'https://api.matchbook.com/edge/rest/v2/offers'
         # Restricting the amount lost to r dollars!
         restriction = 1000
 
@@ -344,8 +348,8 @@ def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=0
         #                                                       restriction, log_times, log_infos, mb_log_dfs, bf_log_dfs)
 
         # lay in matchbook and back in betfair
-        lay_in = 'Betfair'
-        back_in = 'Expekt'
+        lay_in = 'MatchBook'
+        back_in = 'Winner'
         bookie_side = 'BACK'
         exchange_side = 'lay'
         bet_on = bookie.iloc[i]['Bet On']
@@ -353,14 +357,15 @@ def PureCalc(bookie=None, trading=None, exchange=None, headers=None, c_betfair=0
         y_max = restriction  # bookie.iloc[i]['Best Back Size']  # max!!
         a = exchange.iloc[i]['Best Lay Price']
         b = float(bookie.iloc[i]['Best Back Price'])
-        c_back =c_matchbook
-        c_lay = c_betfair
+        c_back = c_betfair
+        c_lay = c_matchbook
 
         if b > a and x_max > 1 and y_max > 1:
-            final_df_to_invest2, stuff2 =  MOWinnerMatchBook.Solve_And_Place_Arb(exchange=exchange.iloc[i], bookie=bookie.iloc[i],
+            final_df_to_invest2, stuff2 = MOWinnerMatchBook.Solve_And_Place_Arb(exchange=exchange.iloc[i], bookie=bookie.iloc[i],
                                                               x_max=x_max, y_max=y_max, a=a, b=b,
-                                                              c_back=c_back, c_lay=c_lay,
-                                                              trading=trading, lay_in=lay_in, back_in=back_in,
+                                                              c_back=c_back, c_lay=c_lay, runner_id=runner_id,
+                                                              url_offer_matchbook=url_offer_matchbook,
+                                                              headers=headers, lay_in=lay_in, back_in=back_in,
                                                               stuff=stuff2, final_df_to_invest=final_df_to_invest2,
                                                               mb_min_bet_size=mb_min_bet_size,
                                                               bf_min_bet_size=bf_min_bet_size, restriction=restriction,
@@ -388,28 +393,31 @@ def CalculateArb(site_1=None, trading=None, site_2=None, headers=None, c_betfair
     df_of_result = pd.DataFrame(columns=['Event Name', 'Date', 'Bet On', 'Best Lay Price', 'Max Lay Size',
                                          'Best Back Price', 'Max Back Size', 'should back:', 'should lay:',
                                          'net prof:'])
-    #clean quates from strings if there are any
-    for i, col in enumerate(site_1.columns):
-        site_1.iloc[:, i] = site_1.iloc[:, i].str.replace('"', '')
+
+    # # clean quates from strings if there are any
+    # for i, col in enumerate(site_1.columns):
+    #     site_1.iloc[:, i] = site_1.iloc[:, i].str.replace('"', '')
 
     site_1.loc[:, 'Bet On'] = site_1.loc[:, 'Bet On'].str.upper()
     site_1.loc[:, 'Bet On'] = site_1.loc[:, 'Bet On'].str.lstrip()
+    site_1.loc[:, 'Bet On'] = site_1.loc[:, 'Bet On'].str.replace("BELOW","UNDER")
+    site_1.loc[:, 'Bet On'] = site_1.loc[:, 'Bet On'].str.replace('"','')
 
     for i2, r2 in site_2.drop_duplicates(subset='Event Name', keep='first').iterrows():
         for i1, r1 in site_1.drop_duplicates(subset='Event Name', keep='first').iterrows():
             # bfname = r1['Event Name']
             # mbname = r2['Event Name']
             if SequenceMatcher(a=r1['Event Name'], b=r2['Event Name']).ratio() >= 0.6:
-                time2 = (r2['Date']).strftime('%Y-%m-%dT%H:%M:%SZ')
-                time1 = r1['Date'].replace(" ", "")  # .strftime('%Y-%m-%d %H:%M:%S')
+                time2 = (datetime.fromisoformat(r2['Date'][:-1])+timedelta(hours=2)).strftime('%Y.%m.%dT%H:%M:%SZ')
+                time1 = r1['Date'].replace(" ", "")
                 if time1 == time2:
                     # check for arbitrage:
                     bookie_to_chk = site_1.loc[site_1['Event Name'] == r1['Event Name']]
                     bookie_to_chk = bookie_to_chk.reset_index(drop=True)
-                    matchbook_to_chk = site_2.loc[site_2['Event Name'] == r2['Event Name']]
-                    matchbook_to_chk = matchbook_to_chk.reset_index(drop=True)
+                    exchange_to_chk = site_2.loc[site_2['Event Name'] == r2['Event Name']]
+                    exchange_to_chk = exchange_to_chk.reset_index(drop=True)
 
-                    df_append_result, tempstuff = PureCalc(bookie_to_chk, trading, matchbook_to_chk, headers,
+                    df_append_result, tempstuff = PureCalc(bookie_to_chk, trading, exchange_to_chk, headers,
                                                            c_betfair, c_matchbook, log_times, log_infos, mb_log_dfs,
                                                            bf_log_dfs)
                     stuff += tempstuff
@@ -418,10 +426,9 @@ def CalculateArb(site_1=None, trading=None, site_2=None, headers=None, c_betfair
                     break
 
     if somthing_happened:
-
         tuff = '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
 
-        # # write metadata
+        # write metadata
         # with open(t2, "a") as f:
         #     f.write(tuff)
         #     f.write('\n Winner \n')
@@ -455,15 +462,14 @@ def Main_to_run(headers=None, bookie_df=None, trading=None, sc=None):
     start_time = time.time()
     # add col names to bookie df:
     columns = ['Event Name', 'Date', 'Bet On', 'Best Back Price']
-
-    # my_file = Path(bookie_url)
+    # my_file = Path(winner_url)
     while not os.path.isfile(bookie_url):
         continue
     bookie_df = pd.read_csv(bookie_url, names=columns)
-    # m_b_df, headers = MatchBook.GetMatchBookDF(wanted_league='Ligue 1', headers=headers)
+    m_b_df, headers = SoccerOUMatchBook.GetMatchBookDF(wanted_league='Ligue 1', headers=headers)
 
     # x = len(m_b_df['Event Name'].value_counts())
-    b_f_df, trading = SoccerOUBetFair.GetBetFairDF(trading=trading, wanted_league='Ligue 1')
+    # b_f_df, trading = BetFair.GetBetFairDF(trading=trading, wanted_league='Ligue 1')
     # y = len(b_f_df['Event Name'].value_counts())
     # LOG "succsessfully extracted x games in MB and y games in BF" +time
     # log_time = '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
@@ -471,10 +477,10 @@ def Main_to_run(headers=None, bookie_df=None, trading=None, sc=None):
     # with open(prog_log_path, "a") as f:
     #     f.write(log_time)
     #     f.write(log_info)
-    # c_matchbook = 0.04
-    c_betfair = 0.05
+    c_matchbook = 0.04
+    # c_betfair = 0.05
 
-    CalculateArb(site_1=bookie_df, site_2=b_f_df, trading=trading, c_betfair=c_betfair)
+    CalculateArb(site_1=bookie_df, site_2=m_b_df, headers=headers, c_matchbook=c_matchbook)
 
     # measure time and show on console:
     print("--- %s seconds ---" % (time.time() - start_time))
@@ -483,19 +489,19 @@ def Main_to_run(headers=None, bookie_df=None, trading=None, sc=None):
 if __name__ == "__main__":
     last_login = datetime.utcnow()
     # first login to api.
-    # r = MatchBook.login()
-    trading = BetFair.login()
-    # if r.status_code != 200:
-    #     raise ConnectionError(
-    #         'something went wrong connecting to server status code: ' + str(r.status_code))
+    r = MatchBook.login()
+    # trading = BetFair.login()
+    if r.status_code != 200:
+        raise ConnectionError(
+            'something went wrong connecting to server status code: ' + str(r.status_code))
     # LOG: "Made MB login" + time
     # log_time = '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
     # log_info = '\nfirst login MatchBook and betfair\n'
     # with open(prog_log_path, "a") as f:
     #     f.write(log_time)
     #     f.write(log_info)
-    # SessionTok = r.json()["session-token"]
-    # headers = {"Content-Type": "application/json;", "session-token": SessionTok}
+    SessionTok = r.json()["session-token"]
+    headers = {"Content-Type": "application/json;", "session-token": SessionTok}
     # p = subprocess.Popen(os.path.join(current_dir, "RemoteExecuteScriptSilent.exe"))
     # p.wait()
     # bookie_df = Pull_From_Bookie_DB("winner")  # TODO con the pull from db
@@ -505,11 +511,11 @@ if __name__ == "__main__":
             delta = now_time - last_login
             if delta.seconds // 60 > 4:
                 # login to api.
-                # r = MatchBook.login()
-                trading = BetFair.login()
-                # if r.status_code != 200:
-                #     raise ConnectionError(
-                #         'something went wrong connecting to server status code: ' + str(r.status_code))
+                r = MatchBook.login()
+                # trading = BetFair.login()
+                if r.status_code != 200:
+                    raise ConnectionError(
+                        'something went wrong connecting to server status code: ' + str(r.status_code))
                 # LOG: "Made MB login" + time
                 # log_time = '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
                 # log_info = '\nRelogin MatchBook and betfair\n'
@@ -520,9 +526,9 @@ if __name__ == "__main__":
                 # p = subprocess.Popen(os.path.join(current_dir, "RemoteExecuteScriptSilent.exe"))
                 # p.wait()
                 last_login = datetime.utcnow()
-                # SessionTok = r.json()["session-token"]
-                # headers = {"Content-Type": "application/json;", "session-token": SessionTok}
-            Main_to_run(trading=trading)
+                SessionTok = r.json()["session-token"]
+                headers = {"Content-Type": "application/json;", "session-token": SessionTok}
+            Main_to_run(headers)  # , trading)
         except Exception as ex:
             # LOG: catch exception and log the traceback + time
             log_time = '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
