@@ -476,12 +476,7 @@ if __name__ == "__main__":
     if r.status_code != 200:
         raise ConnectionError(
             'something went wrong connecting to server status code: ' + str(r.status_code))
-    # LOG: "Made MB login" + time
-    # log_time = '\nTaken time: ' + datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S") + '\n'
-    # log_info = '\nfirst login MatchBook and betfair\n'
-    # with open(prog_log_path, "a") as f:
-    #     f.write(log_time)
-    #     f.write(log_info)
+
     SessionTok = r.json()["session-token"]
     headers = {"Content-Type": "application/json;", "session-token": SessionTok}
     # p = subprocess.Popen(os.path.join(current_dir, "RemoteExecuteScriptSilent.exe"))
